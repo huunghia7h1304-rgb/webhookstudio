@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Webhook Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        discord: {
+                            blurple: '#5865F2',
+                            green: '#57F287',
+                            yellow: '#FEE75C',
+                            fuchsia: '#EB459E',
+                            red: '#ED4245',
+                            dark: '#1e1f22',
+                            darker: '#111214',
+                            card: '#2b2d31',
+                            input: '#1e1f22',
+                            accent: '#4752C4'
+                        }
+                    },
+                    boxShadow: {
+                        'neon-glow': '0 0 20px -3px rgba(88, 101, 242, 0.4)',
+                        'neon-green': '0 0 15px -3px rgba(87, 242, 135, 0.4)',
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111214;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2b2d31;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5865F2;
+        }
+
+        /* Glassmorphism Background */
+        .glass-panel {
+            background: rgba(43, 45, 49, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-input {
+            background: rgba(30, 31, 34, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
+        }
+
+        .glass-input:focus {
+            background: rgba(30, 31, 34, 0.95);
+            border-color: #5865F2;
+            box-shadow: 0 0 12px rgba(88, 101, 242, 0.3);
+        }
+
+        /* Subtle Animated Gradient Mesh Background */
+        .bg-mesh {
+            background-color: #111214;
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(88, 101, 242, 0.15) 0px, transparent 50%),
+                radial-gradient(at 90% 20%, rgba(235, 69, 158, 0.1) 0px, transparent 50%),
+                radial-gradient(at 50% 90%, rgba(87, 242, 135, 0.08) 0px, transparent 50%);
+        }
+    </style>
+</head>
+<body class="bg-mesh text-slate-100 min-h-screen flex flex-col justify-between font-sans selection:bg-discord-blurple selection:text-white">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 border-b border-white/10 glass-panel bg-discord-darker/70 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-discord-blurple to-indigo-600 flex items-center justify-center text-white shadow-neon-glow">
+                    <i class="fa-brands fa-discord text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-heading font-bold text-xl tracking-wide bg-gradient-to-r from-white via-slate-200 to-discord-blurple bg-clip-text text-transparent">
+                        Discord Studio
+                    </h1>
+                    <p class="text-[11px] text-slate-400 font-medium">Webhook Controller & Embed Builder</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="openGuideModal()" class="px-3.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-all flex items-center gap-2 group">
+                    <i class="fa-solid fa-circle-question text-discord-blurple group-hover:scale-110 transition-transform"></i>
+                    <span>Hướng dẫn Webhook</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
+        
+        <!-- Webhook URL Configuration Bar -->
+        <section class="glass-panel rounded-2xl p-4 sm:p-5 mb-8 shadow-xl relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-discord-blurple/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                    <i class="fa-solid fa-link text-discord-blurple"></i>
+                    Discord Webhook URL <span class="text-discord-red">*</span>
+                </span>
+                <span id="webhook-status-badge" class="normal-case text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-white/5 font-medium flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                    Chưa kiểm tra
+                </span>
+            </label>
+
+            <div class="flex flex-col sm:flex-row gap-2.5">
+                <div class="relative flex-grow">
+                    <input type="password" id="webhook-url" placeholder="https://discord.com/api/webhooks/1234567890/abcXYZ..." 
+                        class="w-full glass-input pl-3.5 pr-20 py-2.5 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none">
+                    
+                    <div class="absolute inset-y-0 right-2 flex items-center gap-1">
+                        <button type="button" onclick="pasteWebhookUrl()" title="Dán từ Clipboard" class="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all text-xs">
+                            <i class="fa-solid fa-paste"></i>
+                        </button>
+                        <button type="button" onclick="toggleWebhookVisibility()" title="Ẩn/Hiện URL" class="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all text-xs">
+                            <i id="webhook-eye-icon" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" onclick="testWebhook()" id="btn-test-webhook" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 font-semibold text-xs rounded-xl border border-white/10 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-plug"></i>
+                    <span>Kiểm tra kết nối</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Form & Editor Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Column: Controls Form (7 Cols) -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <!-- Bot Customization -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                    <h2 class="font-heading text-sm font-bold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-user-gear text-discord-blurple"></i>
+                        Cấu hình Bot (Tùy chọn)
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="bot-name" class="block text-xs font-medium text-slate-300 mb-1.5">Tên Bot hiển thị</label>
+                            <input type="text" id="bot-name" placeholder="Ví dụ: System Bot" 
+                                class="w-full glass-input px-3.5 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label for="bot-avatar" class="block text-xs font-medium text-slate-300 mb-1.5">Avatar URL</label>
+                            <input type="url" id="bot-avatar" placeholder="https://domain.com/avatar.png" 
+                                class="w-full glass-input px-3.5 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message Type Tabs & Content Editor -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                    
+                    <!-- Tab Buttons -->
+                    <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
+                        <div class="flex gap-2 p-1 bg-discord-darker/60 rounded-xl border border-white/5">
+                            <button type="button" id="tab-btn-text" onclick="switchTab('text')" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all bg-discord-blurple text-white shadow-neon-glow">
+                                <i class="fa-solid fa-font mr-1.5"></i>
+                                Văn bản thường
+                            </button>
+                            <button type="button" id="tab-btn-embed" onclick="switchTab('embed')" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200">
+                                <i class="fa-solid fa-layer-group mr-1.5"></i>
+                                Định dạng Embed
+                            </button>
+                        </div>
+
+                        <div class="text-[11px] text-slate-400 font-medium">
+                            Phím tắt: <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-white/10 text-slate-300 font-mono">Ctrl + Enter</kbd> để gửi
+                        </div>
+                    </div>
+
+                    <form id="discord-form" onsubmit="handleSend(event)" class="space-y-4">
+                        
+                        <!-- Content Textarea (Common for both or plain text) -->
+                        <div>
+                            <label for="message-content" class="block text-xs font-medium text-slate-300 mb-1.5 flex justify-between items-center">
+                                <span>Nội dung tin nhắn <span id="content-required-mark" class="text-discord-red">*</span></span>
+                                <span id="char-counter" class="text-[11px] text-slate-500 font-mono">0 / 2000</span>
+                            </label>
+                            <textarea id="message-content" rows="4" maxlength="2000" placeholder="Nhập nội dung tin nhắn của bạn ở đây... (Hỗ trợ Markdown Discord: **In đậm**, *In nghiêng*, ```code```)" 
+                                class="w-full glass-input p-3.5 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-y"></textarea>
+                        </div>
+
+                        <!-- FILE ATTACHMENT SECTION -->
+                        <div class="pt-2 border-t border-white/5">
+                            <label class="block text-xs font-medium text-slate-300 mb-2 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5">
+                                    <i class="fa-solid fa-paperclip text-discord-blurple"></i>
+                                    File đính kèm (Attachment)
+                                </span>
+                                <span class="text-[11px] text-slate-500">Tối đa 25MB (Giới hạn Discord)</span>
+                            </label>
+
+                            <!-- Dropzone & File Input -->
+                            <div id="file-dropzone" class="relative border-2 border-dashed border-white/10 hover:border-discord-blurple/50 rounded-xl p-4 text-center cursor-pointer transition-all bg-discord-darker/40 hover:bg-discord-darker/70 group">
+                                <input type="file" id="file-input" onchange="handleFileSelect(event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10">
+                                
+                                <div id="dropzone-empty" class="space-y-1">
+                                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400 group-hover:text-discord-blurple group-hover:scale-110 transition-all"></i>
+                                    <p class="text-xs text-slate-300 font-medium">Nhấp để chọn file hoặc kéo thả vào đây</p>
+                                    <p class="text-[10px] text-slate-500">Hình ảnh, Tài liệu, ZIP, MP4, v.v.</p>
+                                </div>
+
+                                <!-- Selected File Detail Box -->
+                                <div id="file-preview-box" class="hidden relative z-20 flex items-center justify-between bg-discord-card/80 p-2.5 rounded-lg border border-white/10 text-left">
+                                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                                        <div id="file-icon" class="w-9 h-9 rounded-lg bg-discord-blurple/20 text-discord-blurple flex items-center justify-center text-base flex-shrink-0">
+                                            <i class="fa-solid fa-file"></i>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <p id="file-name" class="text-xs font-semibold text-slate-100 truncate">filename.png</p>
+                                            <p id="file-size" class="text-[10px] text-slate-400 font-mono">1.2 MB</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons: Download & Remove -->
+                                    <div class="flex items-center gap-1.5 ml-2">
+                                        <button type="button" onclick="downloadSelectedFile(event)" title="Tải file này về máy" class="p-2 bg-discord-blurple/20 hover:bg-discord-blurple text-discord-blurple hover:text-white rounded-lg transition-all text-xs flex items-center gap-1">
+                                            <i class="fa-solid fa-download"></i>
+                                            <span class="text-[11px] font-semibold hidden sm:inline">Tải về</span>
+                                        </button>
+                                        <button type="button" onclick="removeSelectedFile(event)" title="Xóa file đã chọn" class="p-2 bg-red-500/10 hover:bg-discord-red text-discord-red hover:text-white rounded-lg transition-all text-xs">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- EMBED FIELDS PANEL (Hidden by default) -->
+                        <div id="embed-fields-container" class="hidden space-y-4 pt-2 border-t border-white/5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-discord-blurple uppercase tracking-wider">Cấu hình Embed Card</span>
+                                <div class="flex items-center gap-2">
+                                    <label for="embed-color" class="text-xs text-slate-400">Màu viền Embed:</label>
+                                    <input type="color" id="embed-color" value="#5865F2" class="w-7 h-7 rounded cursor-pointer bg-transparent border-0">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label for="embed-title" class="block text-xs font-medium text-slate-300 mb-1">Tiêu đề (Title)</label>
+                                    <input type="text" id="embed-title" placeholder="Tiêu đề thông báo..." 
+                                        class="w-full glass-input px-3.5 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none">
+                                </div>
+
+                                <div class="sm:col-span-2">
+                                    <label for="embed-description" class="block text-xs font-medium text-slate-300 mb-1">Mô tả chi tiết (Description)</label>
+                                    <textarea id="embed-description" rows="3" placeholder="Chi tiết nội dung trong thẻ embed..." 
+                                        class="w-full glass-input p-3 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-y"></textarea>
+                                </div>
+
+                                <div>
+                                    <label for="embed-thumbnail" class="block text-xs font-medium text-slate-300 mb-1">Thumbnail URL (Ảnh nhỏ góc phải)</label>
+                                    <input type="url" id="embed-thumbnail" placeholder="https://..." 
+                                        class="w-full glass-input px-3.5 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none">
+                                </div>
+
+                                <div>
+                                    <label for="embed-image" class="block text-xs font-medium text-slate-300 mb-1">Image URL (Ảnh lớn bên dưới)</label>
+                                    <input type="url" id="embed-image" placeholder="https://..." 
+                                        class="w-full glass-input px-3.5 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none">
+                                </div>
+
+                                <div class="sm:col-span-2">
+                                    <label for="embed-footer" class="block text-xs font-medium text-slate-300 mb-1">Chân trang (Footer Text)</label>
+                                    <input type="text" id="embed-footer" placeholder="Ví dụ: Sent from Webhook Controller" 
+                                        class="w-full glass-input px-3.5 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Submit Button -->
+                        <div class="pt-3">
+                            <button type="submit" id="btn-send" class="w-full py-3 px-6 bg-gradient-to-r from-discord-blurple to-indigo-600 hover:from-discord-accent hover:to-indigo-500 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-neon-glow transition-all duration-200 flex items-center justify-center gap-2">
+                                <i id="send-btn-icon" class="fa-solid fa-paper-plane"></i>
+                                <span id="send-btn-text">Gửi tin nhắn đến Discord</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Column: Live Preview & History (5 Cols) -->
+            <div class="lg:col-span-5 space-y-6">
+                
+                <!-- Discord Message Live Preview Card -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                    <h2 class="font-heading text-sm font-bold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-eye text-discord-blurple"></i>
+                        Xem trước hiển thị (Preview)
+                    </h2>
+
+                    <!-- Simulated Discord Interface Container -->
+                    <div class="bg-[#313338] rounded-xl p-4 font-sans border border-black/20 text-slate-200 text-sm shadow-inner min-h-[160px]">
+                        <div class="flex items-start gap-3">
+                            <!-- Bot Avatar -->
+                            <img id="preview-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Avatar" class="w-10 h-10 rounded-full bg-discord-dark flex-shrink-0 object-cover">
+                            
+                            <div class="flex-1 min-w-0">
+                                <!-- Bot Header Info -->
+                                <div class="flex items-center gap-2">
+                                    <span id="preview-username" class="font-semibold text-white text-sm">Spidey Bot</span>
+                                    <span class="bg-discord-blurple text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded uppercase tracking-wider flex items-center gap-0.5">
+                                        <i class="fa-solid fa-check text-[8px]"></i> BOT
+                                    </span>
+                                    <span class="text-[11px] text-slate-400 font-normal">Hôm nay lúc <span id="preview-time">12:00</span></span>
+                                </div>
+
+                                <!-- Text Message Content -->
+                                <div id="preview-text-content" class="text-slate-300 text-xs sm:text-sm mt-1 leading-relaxed break-words whitespace-pre-wrap">Nội dung tin nhắn sẽ xuất hiện ở đây...</div>
+
+                                <!-- Embed Card Preview -->
+                                <div id="preview-embed-card" class="hidden mt-2.5 rounded border-l-4 bg-[#2b2d31] p-3 max-w-md shadow-md" style="border-color: #5865F2;">
+                                    <div class="flex justify-between items-start gap-2">
+                                        <div class="flex-1 min-w-0 space-y-1.5">
+                                            <div id="preview-embed-title" class="font-bold text-white text-sm hidden"></div>
+                                            <div id="preview-embed-description" class="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap hidden"></div>
+                                        </div>
+                                        <img id="preview-embed-thumbnail" src="" class="w-16 h-16 rounded object-cover hidden flex-shrink-0">
+                                    </div>
+                                    <img id="preview-embed-image" src="" class="w-full rounded-lg mt-2.5 max-h-48 object-cover hidden">
+                                    <div id="preview-embed-footer" class="text-[10px] text-slate-400 mt-2 font-medium hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Log Card -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl flex flex-col h-[320px]">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-heading text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-history text-discord-blurple"></i>
+                            Lịch sử đã gửi
+                        </h2>
+                        <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-discord-red transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-trash"></i> Xóa
+                        </button>
+                    </div>
+
+                    <div id="history-list" class="space-y-2.5 overflow-y-auto pr-1 flex-grow">
+                        <!-- Dynamic History Items -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-4 text-center text-xs text-slate-500">
+        <p>Discord Webhook Studio • Thiết kế hiện đại cho Discord Community Managers & Developers</p>
+    </footer>
+
+    <!-- Guide Modal -->
+    <div id="guide-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel bg-discord-darker/90 border border-white/10 rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl transform scale-95 transition-transform duration-300 overflow-hidden" id="guide-modal-content">
+            
+            <div class="p-5 border-b border-white/10 flex items-center justify-between">
+                <h3 class="font-heading font-bold text-lg text-white flex items-center gap-2">
+                    <i class="fa-brands fa-discord text-discord-blurple"></i>
+                    Cách tạo Discord Webhook
+                </h3>
+                <button onclick="closeGuideModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5 text-xs text-slate-300 leading-relaxed">
+                <div class="flex gap-3 items-start">
+                    <div class="w-6 h-6 rounded-full bg-discord-blurple text-white font-bold flex items-center justify-center flex-shrink-0">1</div>
+                    <div>
+                        <p class="font-semibold text-white mb-0.5">Mở cài đặt kênh Discord</p>
+                        <p class="text-slate-400">Vào Máy chủ Discord của bạn, nhấn vào biểu tượng bánh răng <i class="fa-solid fa-gear text-slate-300"></i> bên cạnh tên Kênh muốn gửi tin nhắn.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 items-start">
+                    <div class="w-6 h-6 rounded-full bg-discord-blurple text-white font-bold flex items-center justify-center flex-shrink-0">2</div>
+                    <div>
+                        <p class="font-semibold text-white mb-0.5">Tạo Webhook mới</p>
+                        <p class="text-slate-400">Chọn menu <b>Tích hợp (Integrations)</b> &rarr; Nhấn <b>Webhook</b> &rarr; Chọn <b>Webhook Mới (New Webhook)</b>.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 items-start">
+                    <div class="w-6 h-6 rounded-full bg-discord-blurple text-white font-bold flex items-center justify-center flex-shrink-0">3</div>
+                    <div>
+                        <p class="font-semibold text-white mb-0.5">Sao chép Webhook URL</p>
+                        <p class="text-slate-400">Đặt tên tùy ý cho Webhook và nhấn nút <b>Sao chép URL Webhook (Copy Webhook URL)</b>. Dán đường dẫn đó vào ứng dụng này!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-white/10 text-right">
+                <button onclick="closeGuideModal()" class="px-5 py-2 bg-discord-blurple hover:bg-discord-accent text-white font-semibold text-xs rounded-xl transition-all">
+                    Đã hiểu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Core -->
+    <script>
+        // State Management
+        let currentTab = 'text'; // 'text' | 'embed'
+        let selectedFile = null; // Store File object
+
+        // Elements
+        const webhookUrlInput = document.getElementById('webhook-url');
+        const botNameInput = document.getElementById('bot-name');
+        const botAvatarInput = document.getElementById('bot-avatar');
+        const messageContentInput = document.getElementById('message-content');
+        const charCounter = document.getElementById('char-counter');
+        
+        // File Elements
+        const fileInput = document.getElementById('file-input');
+        const dropzoneEmpty = document.getElementById('dropzone-empty');
+        const filePreviewBox = document.getElementById('file-preview-box');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+        const fileIcon = document.getElementById('file-icon');
+
+        // Embed Inputs
+        const embedColorInput = document.getElementById('embed-color');
+        const embedTitleInput = document.getElementById('embed-title');
+        const embedDescInput = document.getElementById('embed-description');
+        const embedThumbInput = document.getElementById('embed-thumbnail');
+        const embedImageInput = document.getElementById('embed-image');
+        const embedFooterInput = document.getElementById('embed-footer');
+
+        // Previews
+        const previewAvatar = document.getElementById('preview-avatar');
+        const previewUsername = document.getElementById('preview-username');
+        const previewTextContent = document.getElementById('preview-text-content');
+        const previewEmbedCard = document.getElementById('preview-embed-card');
+        const previewEmbedTitle = document.getElementById('preview-embed-title');
+        const previewEmbedDesc = document.getElementById('preview-embed-description');
+        const previewEmbedThumb = document.getElementById('preview-embed-thumbnail');
+        const previewEmbedImg = document.getElementById('preview-embed-image');
+        const previewEmbedFooter = document.getElementById('preview-embed-footer');
+
+        // File Selection Handlers
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Check file size (Discord 25MB max)
+            if (file.size > 25 * 1024 * 1024) {
+                showToast('error', 'Kích thước file vượt quá giới hạn 25MB của Discord!');
+                fileInput.value = '';
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatBytes(file.size);
+
+            // Update Icon
+            fileIcon.innerHTML = getFileIcon(file.type);
+
+            dropzoneEmpty.classList.add('hidden');
+            filePreviewBox.classList.remove('hidden');
+            showToast('success', `Đã chọn file: ${file.name}`);
+        }
+
+        function removeSelectedFile(e) {
+            if (e) e.stopPropagation();
+            selectedFile = null;
+            fileInput.value = '';
+            dropzoneEmpty.classList.remove('hidden');
+            filePreviewBox.classList.add('hidden');
+        }
+
+        function downloadSelectedFile(e) {
+            if (e) e.stopPropagation();
+            if (!selectedFile) {
+                showToast('error', 'Không có file nào để tải về!');
+                return;
+            }
+
+            // Create temporary download link
+            const url = URL.createObjectURL(selectedFile);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = selectedFile.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast('success', `Đã tải về: ${selectedFile.name}`);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function getFileIcon(mimeType) {
+            if (mimeType.startsWith('image/')) return '<i class="fa-solid fa-file-image"></i>';
+            if (mimeType.startsWith('video/')) return '<i class="fa-solid fa-file-video"></i>';
+            if (mimeType.startsWith('audio/')) return '<i class="fa-solid fa-file-audio"></i>';
+            if (mimeType.includes('pdf')) return '<i class="fa-solid fa-file-pdf"></i>';
+            if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar')) return '<i class="fa-solid fa-file-zipper"></i>';
+            if (mimeType.includes('code') || mimeType.includes('json') || mimeType.includes('javascript')) return '<i class="fa-solid fa-file-code"></i>';
+            return '<i class="fa-solid fa-file"></i>';
+        }
+
+        // Init App
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSavedConfig();
+            updateLivePreview();
+            renderHistory();
+            updateTime();
+
+            // Auto-save event listeners
+            webhookUrlInput.addEventListener('input', () => {
+                localStorage.setItem('discord_webhook_url', webhookUrlInput.value.trim());
+                resetWebhookBadge();
+            });
+            botNameInput.addEventListener('input', () => {
+                localStorage.setItem('discord_bot_name', botNameInput.value.trim());
+                updateLivePreview();
+            });
+            botAvatarInput.addEventListener('input', () => {
+                localStorage.setItem('discord_bot_avatar', botAvatarInput.value.trim());
+                updateLivePreview();
+            });
+
+            // Live preview listeners
+            [messageContentInput, embedColorInput, embedTitleInput, embedDescInput, embedThumbInput, embedImageInput, embedFooterInput].forEach(el => {
+                el.addEventListener('input', updateLivePreview);
+            });
+
+            // Character counter listener
+            messageContentInput.addEventListener('input', (e) => {
+                const len = e.target.value.length;
+                charCounter.textContent = `${len} / 2000`;
+                if (len >= 1900) {
+                    charCounter.classList.add('text-discord-yellow');
+                } else {
+                    charCounter.classList.remove('text-discord-yellow');
+                }
+            });
+
+            // Keyboard shortcut Ctrl+Enter to send
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    handleSend(e);
+                }
+            });
+        });
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('preview-time').textContent = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Tab Switching
+        function switchTab(tab) {
+            currentTab = tab;
+            const textBtn = document.getElementById('tab-btn-text');
+            const embedBtn = document.getElementById('tab-btn-embed');
+            const embedFields = document.getElementById('embed-fields-container');
+            const reqMark = document.getElementById('content-required-mark');
+
+            if (tab === 'text') {
+                textBtn.className = "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all bg-discord-blurple text-white shadow-neon-glow";
+                embedBtn.className = "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200";
+                embedFields.classList.add('hidden');
+                reqMark.classList.remove('hidden');
+            } else {
+                embedBtn.className = "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all bg-discord-blurple text-white shadow-neon-glow";
+                textBtn.className = "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200";
+                embedFields.classList.remove('hidden');
+                reqMark.classList.add('hidden');
+            }
+            updateLivePreview();
+        }
+
+        // Live Preview Logic
+        function updateLivePreview() {
+            const name = botNameInput.value.trim() || 'Spidey Bot';
+            const avatar = botAvatarInput.value.trim() || 'https://cdn.discordapp.com/embed/avatars/0.png';
+            const text = messageContentInput.value;
+
+            previewUsername.textContent = name;
+            previewAvatar.src = avatar;
+            previewAvatar.onerror = () => { previewAvatar.src = 'https://cdn.discordapp.com/embed/avatars/0.png'; };
+
+            // Render Text Content
+            previewTextContent.textContent = text || (currentTab === 'text' ? 'Nội dung tin nhắn sẽ xuất hiện ở đây...' : '');
+            previewTextContent.style.display = (text || currentTab === 'text') ? 'block' : 'none';
+
+            // Render Embed
+            if (currentTab === 'embed') {
+                previewEmbedCard.classList.remove('hidden');
+                previewEmbedCard.style.borderColor = embedColorInput.value;
+
+                // Title
+                if (embedTitleInput.value.trim()) {
+                    previewEmbedTitle.textContent = embedTitleInput.value.trim();
+                    previewEmbedTitle.classList.remove('hidden');
+                } else previewEmbedTitle.classList.add('hidden');
+
+                // Description
+                if (embedDescInput.value.trim()) {
+                    previewEmbedDesc.textContent = embedDescInput.value.trim();
+                    previewEmbedDesc.classList.remove('hidden');
+                } else previewEmbedDesc.classList.add('hidden');
+
+                // Thumbnail
+                if (embedThumbInput.value.trim()) {
+                    previewEmbedThumb.src = embedThumbInput.value.trim();
+                    previewEmbedThumb.classList.remove('hidden');
+                } else previewEmbedThumb.classList.add('hidden');
+
+                // Image
+                if (embedImageInput.value.trim()) {
+                    previewEmbedImg.src = embedImageInput.value.trim();
+                    previewEmbedImg.classList.remove('hidden');
+                } else previewEmbedImg.classList.add('hidden');
+
+                // Footer
+                if (embedFooterInput.value.trim()) {
+                    previewEmbedFooter.textContent = embedFooterInput.value.trim();
+                    previewEmbedFooter.classList.remove('hidden');
+                } else previewEmbedFooter.classList.add('hidden');
+
+            } else {
+                previewEmbedCard.classList.add('hidden');
+            }
+        }
+
+        // Webhook actions
+        function toggleWebhookVisibility() {
+            const icon = document.getElementById('webhook-eye-icon');
+            if (webhookUrlInput.type === 'password') {
+                webhookUrlInput.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                webhookUrlInput.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        async function pasteWebhookUrl() {
+            try {
+                const text = await navigator.clipboard.readText();
+                webhookUrlInput.value = text;
+                localStorage.setItem('discord_webhook_url', text.trim());
+                showToast('success', 'Đã dán Webhook URL từ Clipboard');
+                resetWebhookBadge();
+            } catch (err) {
+                showToast('error', 'Không thể truy cập Clipboard!');
+            }
+        }
+
+        function resetWebhookBadge() {
+            const badge = document.getElementById('webhook-status-badge');
+            badge.className = "normal-case text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-white/5 font-medium flex items-center gap-1.5";
+            badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Chưa kiểm tra`;
+        }
+
+        async function testWebhook() {
+            const url = webhookUrlInput.value.trim();
+            if (!url) {
+                showToast('error', 'Vui lòng nhập Discord Webhook URL!');
+                return;
+            }
+
+            const btn = document.getElementById('btn-test-webhook');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Testing...`;
+
+            try {
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('webhook-status-badge');
+                    badge.className = "normal-case text-[11px] px-2.5 py-0.5 rounded-full bg-discord-green/10 text-discord-green border border-discord-green/30 font-semibold flex items-center gap-1.5";
+                    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-discord-green animate-pulse"></span> Kênh: #${data.name || 'Webhook'}`;
+                    showToast('success', `Kết nối thành công tới Webhook: "${data.name}"`);
+                } else {
+                    throw new Error('Webhook không hợp lệ hoặc đã bị xóa');
+                }
+            } catch (err) {
+                const badge = document.getElementById('webhook-status-badge');
+                badge.className = "normal-case text-[11px] px-2.5 py-0.5 rounded-full bg-discord-red/10 text-discord-red border border-discord-red/30 font-semibold flex items-center gap-1.5";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-discord-red"></span> Lỗi kết nối`;
+                showToast('error', 'URL Webhook không hợp lệ!');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-plug"></i> <span>Kiểm tra kết nối</span>`;
+            }
+        }
+
+        // Send Message
+        async function handleSend(e) {
+            if (e) e.preventDefault();
+
+            const url = webhookUrlInput.value.trim();
+            if (!url) {
+                showToast('error', 'Vui lòng cung cấp Webhook URL!');
+                return;
+            }
+
+            const payloadData = {};
+
+            // Custom Username & Avatar
+            if (botNameInput.value.trim()) payloadData.username = botNameInput.value.trim();
+            if (botAvatarInput.value.trim()) payloadData.avatar_url = botAvatarInput.value.trim();
+
+            // Content
+            if (messageContentInput.value.trim()) {
+                payloadData.content = messageContentInput.value.trim();
+            }
+
+            // Embed payload
+            if (currentTab === 'embed') {
+                const embed = {};
+                if (embedTitleInput.value.trim()) embed.title = embedTitleInput.value.trim();
+                if (embedDescInput.value.trim()) embed.description = embedDescInput.value.trim();
+                if (embedColorInput.value) embed.color = parseInt(embedColorInput.value.replace('#', ''), 16);
+                if (embedThumbInput.value.trim()) embed.thumbnail = { url: embedThumbInput.value.trim() };
+                if (embedImageInput.value.trim()) embed.image = { url: embedImageInput.value.trim() };
+                if (embedFooterInput.value.trim()) embed.footer = { text: embedFooterInput.value.trim() };
+
+                if (Object.keys(embed).length > 0) {
+                    payloadData.embeds = [embed];
+                }
+            }
+
+            if (!payloadData.content && (!payloadData.embeds || payloadData.embeds.length === 0) && !selectedFile) {
+                showToast('error', 'Vui lòng nhập nội dung tin nhắn, Embed hoặc chọn File đính kèm!');
+                return;
+            }
+
+            setSendingState(true);
+
+            try {
+                let options = {};
+
+                if (selectedFile) {
+                    // Send via multipart/form-data for files
+                    const formData = new FormData();
+                    formData.append('payload_json', JSON.stringify(payloadData));
+                    formData.append('file', selectedFile);
+
+                    options = {
+                        method: 'POST',
+                        body: formData
+                    };
+                } else {
+                    // Standard JSON request
+                    options = {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payloadData)
+                    };
+                }
+
+                const res = await fetch(url, options);
+
+                if (res.ok || res.status === 204) {
+                    showToast('success', 'Gửi tin nhắn vào Discord thành công!');
+                    saveHistoryItem({
+                        id: Date.now(),
+                        type: currentTab,
+                        summary: (selectedFile ? `[📎 ${selectedFile.name}] ` : '') + (payloadData.content || embedTitleInput.value || 'Tin nhắn'),
+                        timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+                        status: 'success'
+                    });
+                    
+                    // Clear inputs
+                    messageContentInput.value = '';
+                    charCounter.textContent = '0 / 2000';
+                    removeSelectedFile();
+                    updateLivePreview();
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.message || 'Lỗi gửi tin nhắn');
+                }
+            } catch (err) {
+                showToast('error', `Gửi thất bại: ${err.message}`);
+                saveHistoryItem({
+                    id: Date.now(),
+                    type: currentTab,
+                    summary: payloadData.content || 'Messsage',
+                    timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+                    status: 'error'
+                });
+            } finally {
+                setSendingState(false);
+                renderHistory();
+            }
+        }
+
+        function setSendingState(isSending) {
+            const btn = document.getElementById('btn-send');
+            const icon = document.getElementById('send-btn-icon');
+            const text = document.getElementById('send-btn-text');
+
+            if (isSending) {
+                btn.disabled = true;
+                btn.classList.add('opacity-70', 'cursor-not-allowed');
+                icon.className = 'fa-solid fa-spinner fa-spin';
+                text.textContent = 'Đang gửi...';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                icon.className = 'fa-solid fa-paper-plane';
+                text.textContent = 'Gửi tin nhắn đến Discord';
+            }
+        }
+
+        // History Management
+        function saveHistoryItem(item) {
+            const list = JSON.parse(localStorage.getItem('discord_msg_history') || '[]');
+            list.unshift(item);
+            if (list.length > 20) list.pop();
+            localStorage.setItem('discord_msg_history', JSON.stringify(list));
+        }
+
+        function clearHistory() {
+            localStorage.removeItem('discord_msg_history');
+            renderHistory();
+            showToast('success', 'Đã xóa lịch sử!');
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById('history-list');
+            const list = JSON.parse(localStorage.getItem('discord_msg_history') || '[]');
+
+            if (list.length === 0) {
+                historyList.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center text-slate-500 py-8">
+                        <i class="fa-solid fa-inbox text-3xl mb-2 opacity-30"></i>
+                        <p class="text-xs">Chưa có lịch sử tin nhắn</p>
+                    </div>
+                `;
+                return;
+            }
+
+            historyList.innerHTML = list.map(item => `
+                <div class="p-3 bg-discord-darker/70 border border-white/5 rounded-xl text-xs space-y-1 flex items-center justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${item.type === 'embed' ? 'bg-discord-fuchsia/20 text-discord-fuchsia' : 'bg-discord-blurple/20 text-discord-blurple'}">
+                                ${item.type}
+                            </span>
+                            <span class="text-slate-400 text-[10px]">${item.timestamp}</span>
+                        </div>
+                        <p class="text-slate-200 truncate mt-1 font-mono">${escapeHtml(item.summary)}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="${item.status === 'success' ? 'text-discord-green' : 'text-discord-red'} text-sm">
+                            <i class="fa-solid ${item.status === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'}"></i>
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Local Storage Config
+        function loadSavedConfig() {
+            const savedUrl = localStorage.getItem('discord_webhook_url');
+            const savedName = localStorage.getItem('discord_bot_name');
+            const savedAvatar = localStorage.getItem('discord_bot_avatar');
+
+            if (savedUrl) webhookUrlInput.value = savedUrl;
+            if (savedName) botNameInput.value = savedName;
+            if (savedAvatar) botAvatarInput.value = savedAvatar;
+        }
+
+        // UI Toast Notifications
+        function showToast(type, message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const isSuccess = type === 'success';
+            toast.className = `p-4 rounded-xl text-xs font-semibold shadow-2xl flex items-center gap-3 backdrop-blur-md border pointer-events-auto transform translate-x-10 opacity-0 transition-all duration-300 ${
+                isSuccess 
+                ? 'bg-discord-darker/90 border-discord-green/40 text-discord-green' 
+                : 'bg-discord-darker/90 border-discord-red/40 text-discord-red'
+            }`;
+
+            toast.innerHTML = `
+                <i class="fa-solid ${isSuccess ? 'fa-circle-check' : 'fa-triangle-exclamation'} text-base"></i>
+                <span class="flex-1 text-slate-200">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-10', 'opacity-0');
+            }, 10);
+
+            // Remove
+            setTimeout(() => {
+                toast.classList.add('translate-x-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Modal Handlers
+        function openGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            const content = document.getElementById('guide-modal-content');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }
+
+        function closeGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            const content = document.getElementById('guide-modal-content');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
